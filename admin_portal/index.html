@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ATSVS College — Admin Portal</title>
+<style>
+  :root{
+    --primary:#1b5e20; --accent:#2e7d32; --bg:#f5f7f5; --card:#ffffff;
+    --line:#e3e8e3; --muted:#6b756b; --pending:#ef6c00; --ok:#2e7d32; --no:#c62828;
+  }
+  *{box-sizing:border-box;font-family:'Segoe UI',Roboto,Arial,sans-serif}
+  body{margin:0;background:var(--bg);color:#1b1f1b}
+  #login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center}
+  .login-card{background:#fff;padding:36px;border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,.08);width:340px;text-align:center}
+  .logo{width:70px;height:70px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 14px}
+  input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;margin-top:6px;background:#fff}
+  textarea{resize:vertical;min-height:64px}
+  label{display:block;text-align:left;font-size:13px;color:var(--muted);margin-top:12px;font-weight:600}
+  button{cursor:pointer;border:none;border-radius:10px;font-weight:600}
+  .btn{background:var(--primary);color:#fff;padding:12px;font-size:15px;width:100%;margin-top:18px}
+  .btn:hover{background:var(--accent)}
+  .err{color:var(--no);font-size:13px;margin-top:12px;min-height:16px}
+  #app{display:none;min-height:100vh}
+  .shell{display:flex;min-height:100vh}
+  .side{width:230px;background:var(--primary);color:#fff;padding:22px 0;display:flex;flex-direction:column}
+  .brand{padding:0 22px 18px;font-size:18px;font-weight:700;border-bottom:1px solid rgba(255,255,255,.15);display:flex;align-items:center;gap:10px}
+  .nav{flex:1;margin-top:10px}
+  .nav a{display:flex;align-items:center;gap:10px;padding:13px 22px;color:#dce7dc;text-decoration:none;font-size:14.5px;cursor:pointer}
+  .nav a.active,.nav a:hover{background:rgba(255,255,255,.12);color:#fff}
+  .logout{margin:0 22px;padding:11px;background:rgba(255,255,255,.14);color:#fff;border-radius:10px;text-align:center}
+  .main{flex:1;padding:28px 34px;overflow:auto}
+  h1{font-size:22px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 22px;font-size:14px}
+  .cards{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 22px;min-width:150px}
+  .stat .n{font-size:26px;font-weight:700;color:var(--primary)}
+  .stat .l{color:var(--muted);font-size:13px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:22px}
+  .panel h2{margin:0 0 14px;font-size:16px}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:11px 10px;border-bottom:1px solid var(--line);font-size:14px}
+  th{color:var(--muted);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px}
+  .chip{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;display:inline-block}
+  .c-pending{background:#fff3e0;color:var(--pending)}
+  .c-ok{background:#e8f5e9;color:var(--ok)}
+  .c-no{background:#fdecea;color:var(--no)}
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .row>div{flex:1;min-width:160px}
+  .mini{padding:7px 12px;font-size:13px;background:var(--primary);color:#fff}
+  .mini.ghost{background:#fff;color:var(--no);border:1px solid var(--line)}
+  .hidden{display:none}
+  .note{background:#e8f5e9;border:1px solid #b6dbbb;color:#1b5e20;padding:12px 14px;border-radius:10px;font-size:13px;margin-bottom:20px}
+  .add-btn{background:var(--primary);color:#fff;padding:9px 16px;font-size:14px}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="login">
+  <div class="login-card">
+    <div class="logo">🎓</div>
+    <h2 style="margin:0;color:var(--primary)">ATSVS Admin Portal</h2>
+    <p style="color:var(--muted);font-size:13px;margin:4px 0 8px">College administration</p>
+    <label>Admin Email</label>
+    <input id="email" type="email" autocomplete="username" value="admin@atsvs.com" />
+    <label>Password</label>
+    <input id="pass" type="password" autocomplete="current-password" value="admin123" />
+    <button class="btn" onclick="login()">Login</button>
+    <div class="err" id="loginErr"></div>
+    <p style="color:var(--muted);font-size:12px;margin-top:8px">Default admin — create this exact user in Firebase Authentication:<br><b>admin@atsvs.com</b> / <b>admin123</b></p>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app">
+  <div class="shell">
+    <div class="side">
+      <div class="brand">🎓 ATSVS Admin</div>
+      <div class="nav">
+        <a data-tab="dash" class="active" onclick="go('dash')">📊 Dashboard</a>
+        <a data-tab="students" onclick="go('students')">👨‍🎓 Students</a>
+        <a data-tab="staff" onclick="go('staff')">🧑‍💼 Staff</a>
+        <a data-tab="events" onclick="go('events')">📣 Events</a>
+        <a data-tab="menu" onclick="go('menu')">🍽️ Mess Menu</a>
+        <a data-tab="requests" onclick="go('requests')">📝 Requests</a>
+      </div>
+      <div class="logout" onclick="logout()">Logout</div>
+    </div>
+    <div class="main">
+      <div class="note">Connected to Firestore — changes here are live in the parent &amp; student apps.</div>
+
+      <!-- DASHBOARD -->
+      <section id="dash">
+        <h1>Dashboard</h1>
+        <p class="sub">Overview of students, events and pending requests.</p>
+        <div class="cards" id="statCards"></div>
+        <div class="panel">
+          <h2>Recent Requests</h2>
+          <table><thead><tr><th>Student</th><th>Type</th><th>Reason</th><th>Status</th></tr></thead>
+          <tbody id="recentRows"></tbody></table>
+        </div>
+      </section>
+
+      <!-- STUDENTS -->
+      <section id="students" class="hidden">
+        <h1>Student Records</h1>
+        <p class="sub">These records control who can log in to the apps. A student logs in only if their student mobile + parent phone match a record here.</p>
+        <div class="panel">
+          <h2>Add a student</h2>
+          <div class="row">
+            <div><label>Name</label><input id="s_name"></div>
+            <div><label>Roll No</label><input id="s_roll"></div>
+            <div><label>Course</label><input id="s_course"></div>
+          </div>
+          <div class="row">
+            <div><label>Year</label><input id="s_year"></div>
+            <div><label>Hostel Room</label><input id="s_room"></div>
+            <div><label>Student Mobile</label><input id="s_sphone"></div>
+          </div>
+          <div class="row">
+            <div><label>Parent Name</label><input id="s_pname"></div>
+            <div><label>Parent Phone</label><input id="s_pphone"></div>
+          </div>
+          <button class="add-btn" style="margin-top:16px" onclick="addStudent()">+ Add Student</button>
+        </div>
+        <div class="panel">
+          <h2>Registered students</h2>
+          <table><thead><tr><th>Name</th><th>Roll</th><th>Course</th><th>Room</th><th>Student Mobile</th><th>Parent</th><th>Parent Phone</th><th></th></tr></thead>
+          <tbody id="studentRows"></tbody></table>
+        </div>
+      </section>
+
+      <!-- STAFF -->
+      <section id="staff" class="hidden">
+        <h1>Staff Logins</h1>
+        <p class="sub">Create login accounts for the Hostel Warden, Security and Canteen. They sign in to the app with this email and password.</p>
+        <div class="panel">
+          <h2>Add a staff member</h2>
+          <div class="row">
+            <div>
+              <label>Role</label>
+              <select id="st_role">
+                <option value="hostelWarden">Hostel Warden</option>
+                <option value="security">Security</option>
+                <option value="canteen">Canteen</option>
+              </select>
+            </div>
+            <div><label>Email</label><input id="st_email" type="email" placeholder="warden@atsvs.com"></div>
+            <div><label>Password</label><input id="st_pass" type="text" placeholder="min 6 characters"></div>
+          </div>
+          <button class="add-btn" style="margin-top:16px" onclick="addStaff()">+ Create Login</button>
+          <span id="staffStatus" style="margin-left:10px;font-size:13px;color:var(--muted)"></span>
+        </div>
+        <div class="panel">
+          <h2>Staff accounts</h2>
+          <table><thead><tr><th>Role</th><th>Email</th><th>Password</th><th></th></tr></thead>
+          <tbody id="staffRows"></tbody></table>
+        </div>
+      </section>
+
+      <!-- EVENTS -->
+      <section id="events" class="hidden">
+        <h1>College Events</h1>
+        <p class="sub">Events you add here appear on the home page of the parent and student apps.</p>
+        <div class="panel">
+          <h2>Add an event</h2>
+          <div class="row">
+            <div><label>Title</label><input id="e_title"></div>
+            <div><label>Date</label><input id="e_date" type="date"></div>
+          </div>
+          <label>Description</label><textarea id="e_desc"></textarea>
+          <div class="row">
+            <div><label>Image URLs (optional, comma-separated)</label><input id="e_imgurls" placeholder="https://... , https://..."></div>
+            <div><label>or upload images (optional)</label><input id="e_imgs" type="file" accept="image/*" multiple></div>
+          </div>
+          <button class="add-btn" style="margin-top:16px" onclick="addEvent()">+ Add Event</button>
+          <span id="eventStatus" style="margin-left:10px;font-size:13px;color:var(--muted)"></span>
+          <p style="font-size:12px;color:var(--muted);margin-top:8px">All fields are optional. Up to 5 images. Upload needs Firebase Storage enabled; the URL option works on the free plan.</p>
+        </div>
+        <div class="panel">
+          <h2>Posted events</h2>
+          <table><thead><tr><th>Image</th><th>Date</th><th>Title</th><th>Description</th><th></th></tr></thead>
+          <tbody id="eventRows"></tbody></table>
+        </div>
+      </section>
+
+      <!-- MESS MENU -->
+      <section id="menu" class="hidden">
+        <h1>Mess Menu</h1>
+        <p class="sub">Food items you add here appear as customization choices in the student app. If a student doesn't pick one, they get the regular mess.</p>
+        <div class="panel">
+          <h2>Add a food item</h2>
+          <div class="row">
+            <div>
+              <label>Meal</label>
+              <select id="f_meal">
+                <option value="0">Breakfast</option>
+                <option value="1">Lunch</option>
+                <option value="2">Dinner</option>
+              </select>
+            </div>
+            <div><label>Food name</label><input id="f_food" placeholder="e.g. Idli & Sambar"></div>
+          </div>
+          <button class="add-btn" style="margin-top:16px" onclick="addMenuItem()">+ Add Item</button>
+        </div>
+        <div class="panel"><h2>Breakfast</h2><div id="menuBreakfast"></div></div>
+        <div class="panel"><h2>Lunch</h2><div id="menuLunch"></div></div>
+        <div class="panel"><h2>Dinner</h2><div id="menuDinner"></div></div>
+      </section>
+
+      <!-- REQUESTS -->
+      <section id="requests" class="hidden">
+        <h1>Outpass & Leave Requests</h1>
+        <p class="sub">Live from the apps. Outpass needs the Hostel Warden only; Leave needs the Warden and a Higher Authority.</p>
+        <div class="panel">
+          <p class="sub" style="margin-bottom:14px">As Higher Authority, approve or reject the second stage of <b>Leave</b> requests (after the warden approves).</p>
+          <table><thead><tr><th>Student</th><th>Type</th><th>Reason</th><th>Dates</th><th>Warden</th><th>Authority</th><th>Gate</th><th>Overall</th><th>Authority action</th></tr></thead>
+          <tbody id="reqRows"></tbody></table>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase Web SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
+<script>
+// ====== 1. PASTE YOUR FIREBASE WEB CONFIG HERE ======
+// Firebase console → Project settings → Your apps → Web app → Config.
+const firebaseConfig = {
+  apiKey: "AIzaSyD2p3VBexPRjaaHLOkewATVWyMDwhHSwio",
+  authDomain: "atsvs-college.firebaseapp.com",
+  projectId: "atsvs-college",
+  storageBucket: "atsvs-college.firebasestorage.app",
+  messagingSenderId: "1068582115163",
+  appId: "1:1068582115163:web:ecc179eb48f130dfed2c7e"
+};
+// ====================================================
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+let students = [], events = [], menu = [], requests = [], staff = [];
+let unsub = [];
+
+// ---- Auth ----
+function login(){
+  const email = document.getElementById('email').value.trim();
+  const pass = document.getElementById('pass').value;
+  const err = document.getElementById('loginErr'); err.textContent = '';
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(cred => db.collection('users').doc(cred.user.uid).get())
+    .then(doc => {
+      if (doc.exists && doc.data().role === 'admin') {
+        showApp();
+      } else {
+        err.textContent = 'This account is not an admin.';
+        auth.signOut();
+      }
+    })
+    .catch(e => { err.textContent = e.message; });
+}
+function logout(){ unsub.forEach(u=>u()); unsub=[]; auth.signOut().then(()=>location.reload()); }
+
+function showApp(){
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').style.display='block';
+  startListeners();
+}
+
+// Stay signed in across reloads.
+auth.onAuthStateChanged(u => {
+  if (!u) return;
+  db.collection('users').doc(u.uid).get().then(doc=>{
+    if (doc.exists && doc.data().role === 'admin') showApp();
+  });
+});
+
+function startListeners(){
+  unsub.push(db.collection('students').onSnapshot(s=>{ students = s.docs.map(d=>d.data()); renderStudents(); renderStats(); renderRequests(); }));
+  unsub.push(db.collection('events').onSnapshot(s=>{ events = s.docs.map(d=>d.data()); renderEvents(); renderStats(); }));
+  unsub.push(db.collection('messMenu').onSnapshot(s=>{ menu = s.docs.map(d=>d.data()); renderMenu(); }));
+  unsub.push(db.collection('requests').onSnapshot(s=>{ requests = s.docs.map(d=>d.data()); renderRequests(); renderStats(); }));
+  unsub.push(db.collection('users').onSnapshot(s=>{
+    staff = s.docs.map(d=>({uid:d.id, ...d.data()}))
+                  .filter(u=>['hostelWarden','security','canteen'].includes(u.role));
+    renderStaff();
+  }));
+}
+
+// ---- Nav ----
+function go(tab){
+  ['dash','students','staff','events','menu','requests'].forEach(t=>document.getElementById(t).classList.toggle('hidden',t!==tab));
+  document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.tab===tab));
+}
+const ROLE_LABELS={hostelWarden:'Hostel Warden',security:'Security',canteen:'Canteen'};
+
+// ---- Helpers ----
+function nameFor(roll){ const s=students.find(x=>x.rollNo===roll); return s?s.name:roll; }
+function statusLabel(n){ return n===1?'Approved':n===2?'Rejected':'Pending'; }
+function gateLabel(n){ return n===1?'Went out':n===2?'Returned':'Not out'; }
+function typeLabel(r){ const t=r.type===1?'Leave':'Outpass'; const k=(r.type===0&&r.outpassKind!=null)?(r.outpassKind===1?' (Sunday)':' (Spiritual)'):''; return t+k; }
+function overallOf(r){
+  const W=r.wardenStatus, A=r.authorityStatus;
+  if(W===2||A===2) return 'Rejected';
+  if(r.type===0) return W===1?'Approved':'Pending';
+  return (W===1&&A===1)?'Approved':'Pending';
+}
+function chip(s){ const c=s==='Approved'?'c-ok':s==='Rejected'?'c-no':'c-pending'; return `<span class="chip ${c}">${s}</span>`; }
+function fmtD(iso){ if(!iso) return '—'; const d=new Date(iso); return isNaN(d)?iso:d.toLocaleDateString(); }
+function emptyRow(n){ return `<tr><td colspan="${n}" style="color:#aaa;text-align:center;padding:18px">No records yet</td></tr>`; }
+
+// ---- Renderers ----
+function renderStats(){
+  const pending = requests.filter(r=>overallOf(r)==='Pending').length;
+  document.getElementById('statCards').innerHTML =
+    [['Students',students.length],['Events',events.length],['Pending requests',pending]]
+    .map(s=>`<div class="stat"><div class="n">${s[1]}</div><div class="l">${s[0]}</div></div>`).join('');
+}
+function renderRequests(){
+  const sorted=[...requests].sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||''));
+  document.getElementById('recentRows').innerHTML = sorted.slice(0,8).map(r=>
+    `<tr><td>${nameFor(r.studentRoll)}</td><td>${typeLabel(r)}</td><td>${r.reason||''}</td><td>${chip(overallOf(r))}</td></tr>`).join('')||emptyRow(4);
+  document.getElementById('reqRows').innerHTML = sorted.map(r=>{
+    const needsAuth = r.type===1 && r.wardenStatus===1 && r.authorityStatus===0;
+    const action = needsAuth
+      ? `<button class="mini" onclick="authDecide('${r.id}',1)">Approve</button> <button class="mini ghost" onclick="authDecide('${r.id}',2)">Reject</button>`
+      : '<span style="color:#bbb">—</span>';
+    return `<tr><td>${nameFor(r.studentRoll)}</td><td>${typeLabel(r)}</td><td>${r.reason||''}</td>
+     <td>${fmtD(r.fromDate)} → ${fmtD(r.toDate)}</td>
+     <td>${chip(statusLabel(r.wardenStatus))}</td>
+     <td>${r.type===1?chip(statusLabel(r.authorityStatus)):'<span style="color:#bbb">—</span>'}</td>
+     <td>${gateLabel(r.gateStatus)}</td>
+     <td>${chip(overallOf(r))}</td>
+     <td>${action}</td></tr>`;
+  }).join('')||emptyRow(9);
+}
+function authDecide(id, decision){
+  db.collection('requests').doc(id).update({
+    authorityStatus: decision,
+    authorityDecidedAt: new Date().toISOString()
+  }).catch(e=>alert(e.message));
+}
+function renderStudents(){
+  document.getElementById('studentRows').innerHTML = students.map(s=>
+    `<tr><td>${s.name||''}</td><td>${s.rollNo||''}</td><td>${s.course||''}</td><td>${s.hostelRoom||''}</td>
+     <td>${s.studentPhone||'—'}</td><td>${s.parentName||''}</td><td>${s.parentPhone||''}</td>
+     <td><button class="mini ghost" onclick="delStudent('${s.rollNo}')">Remove</button></td></tr>`).join('')||emptyRow(8);
+}
+function renderEvents(){
+  const sorted=[...events].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  document.getElementById('eventRows').innerHTML = sorted.map(e=>
+    `<tr><td>${(e.imageUrls&&e.imageUrls.length)?`<img src="${e.imageUrls[0]}" style="height:34px;border-radius:6px;object-fit:cover" onerror="this.style.display='none'">${e.imageUrls.length>1?` <span style="font-size:11px;color:#888">+${e.imageUrls.length-1}</span>`:''}`:'<span style="color:#bbb">—</span>'}</td>
+     <td>${e.date?fmtD(e.date):'<span style="color:#bbb">—</span>'}</td><td>${e.title||''}</td><td>${e.description||''}</td>
+     <td><button class="mini ghost" onclick="delEvent('${e.id}')">Delete</button></td></tr>`).join('')||emptyRow(5);
+}
+function renderMenu(){
+  [['menuBreakfast',0],['menuLunch',1],['menuDinner',2]].forEach(([el,meal])=>{
+    const items=menu.filter(m=>m.meal===meal);
+    document.getElementById(el).innerHTML = items.length
+      ? items.map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)">
+          <span>${m.name}</span><button class="mini ghost" onclick="delMenuItem('${m.id}')">Remove</button></div>`).join('')
+      : '<span style="color:#aaa">No items — students get the regular mess.</span>';
+  });
+}
+
+// ---- Writes ----
+async function addStudent(){
+  const g=id=>document.getElementById(id).value.trim();
+  const s={name:g('s_name'),rollNo:g('s_roll'),course:g('s_course'),year:g('s_year'),
+           hostelRoom:g('s_room'),studentPhone:g('s_sphone'),parentName:g('s_pname'),parentPhone:g('s_pphone')};
+  if(!s.name||!s.rollNo||!s.studentPhone||!s.parentPhone){alert('Name, Roll No, Student Mobile and Parent Phone are required.');return}
+  try{
+    const batch=db.batch();
+    batch.set(db.collection('students').doc(s.rollNo), s);
+    // Public phone index so the apps can verify numbers before login.
+    batch.set(db.collection('phoneIndex').doc(s.studentPhone), {rollNo:s.rollNo, kind:'student'});
+    batch.set(db.collection('phoneIndex').doc(s.parentPhone), {rollNo:s.rollNo, kind:'parent'});
+    await batch.commit();
+    ['s_name','s_roll','s_course','s_year','s_room','s_sphone','s_pname','s_pphone'].forEach(i=>document.getElementById(i).value='');
+  }catch(e){ alert(e.message); }
+}
+function delStudent(roll){
+  if(!confirm('Remove this student?')) return;
+  const s=students.find(x=>x.rollNo===roll);
+  const batch=db.batch();
+  batch.delete(db.collection('students').doc(roll));
+  if(s){
+    if(s.studentPhone) batch.delete(db.collection('phoneIndex').doc(s.studentPhone));
+    if(s.parentPhone) batch.delete(db.collection('phoneIndex').doc(s.parentPhone));
+  }
+  batch.commit().catch(e=>alert(e.message));
+}
+
+async function addEvent(){
+  const t=document.getElementById('e_title').value.trim();
+  const d=document.getElementById('e_date').value;
+  const de=document.getElementById('e_desc').value.trim();
+  const urlsRaw=document.getElementById('e_imgurls').value.trim();
+  const files=document.getElementById('e_imgs').files;
+  const status=document.getElementById('eventStatus');
+  const ref=db.collection('events').doc();
+  let imageUrls = urlsRaw ? urlsRaw.split(/[,\n]/).map(s=>s.trim()).filter(Boolean) : [];
+  try{
+    for(let i=0; i<files.length && imageUrls.length<5; i++){
+      status.textContent=`Uploading image ${i+1}…`;
+      const f=files[i];
+      const sref=storage.ref().child('event_images/'+ref.id+'_'+i+'_'+f.name);
+      await sref.put(f);
+      imageUrls.push(await sref.getDownloadURL());
+    }
+    imageUrls=imageUrls.slice(0,5); // max 5
+    status.textContent='Saving…';
+    await ref.set({id:ref.id,title:t,description:de,date:d||'',imageUrls:imageUrls});
+    ['e_title','e_date','e_desc','e_imgurls','e_imgs'].forEach(i=>document.getElementById(i).value='');
+    status.textContent='Added.'; setTimeout(()=>status.textContent='',1500);
+  }catch(e){ status.textContent=''; alert(e.message); }
+}
+function delEvent(id){ db.collection('events').doc(id).delete().catch(e=>alert(e.message)); }
+
+function addMenuItem(){
+  const meal=parseInt(document.getElementById('f_meal').value,10);
+  const name=document.getElementById('f_food').value.trim();
+  if(!name){alert('Enter a food name.');return}
+  const ref=db.collection('messMenu').doc();
+  ref.set({id:ref.id,meal:meal,name:name})
+    .then(()=>document.getElementById('f_food').value='')
+    .catch(e=>alert(e.message));
+}
+function delMenuItem(id){ db.collection('messMenu').doc(id).delete().catch(e=>alert(e.message)); }
+
+// ---- Staff logins ----
+function renderStaff(){
+  document.getElementById('staffRows').innerHTML = staff.map(u=>
+    `<tr><td>${ROLE_LABELS[u.role]||u.role}</td><td>${u.email||'—'}</td>
+     <td>${u.password||'<span style="color:#bbb">—</span>'}</td>
+     <td><button class="mini ghost" onclick="delStaff('${u.uid}')">Remove</button></td></tr>`).join('')||emptyRow(4);
+}
+// Create the account on a temporary secondary app so the admin stays signed in.
+async function addStaff(){
+  const role=document.getElementById('st_role').value;
+  const email=document.getElementById('st_email').value.trim();
+  const pass=document.getElementById('st_pass').value;
+  const status=document.getElementById('staffStatus');
+  if(!email||pass.length<6){alert('Enter an email and a password of at least 6 characters.');return}
+  status.textContent='Creating…';
+  let sec;
+  try{
+    sec=firebase.initializeApp(firebaseConfig,'secondary_'+Date.now());
+    const cred=await sec.auth().createUserWithEmailAndPassword(email,pass);
+    await db.collection('users').doc(cred.user.uid).set({role:role,email:email,password:pass});
+    await sec.auth().signOut();
+    document.getElementById('st_email').value='';document.getElementById('st_pass').value='';
+    status.textContent='Login created.'; setTimeout(()=>status.textContent='',1800);
+  }catch(e){ status.textContent=''; alert(e.message); }
+  finally{ if(sec){ try{ await sec.delete(); }catch(_){}} }
+}
+// Removes the role mapping (revokes app access). The Auth user can be fully
+// deleted in the console's Authentication tab if needed.
+function delStaff(uid){
+  if(confirm('Remove this staff login?')) db.collection('users').doc(uid).delete().catch(e=>alert(e.message));
+}
+</script>
+</body>
+</html>

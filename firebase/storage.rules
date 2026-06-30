@@ -1,0 +1,17 @@
+rules_version = '2';
+
+// Storage rules for the ATSVS College app.
+// Event images are public to read (shown in the apps) and writable by any
+// signed-in user (the admin portal writes them). Tighten later with custom
+// admin claims if needed. Everything else is locked.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /event_images/{file} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

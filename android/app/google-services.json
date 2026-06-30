@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1068582115163",
+    "project_id": "atsvs-college",
+    "storage_bucket": "atsvs-college.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1068582115163:android:e90e0c7eb2afa684ed2c7e",
+        "android_client_info": {
+          "package_name": "com.example.atsvs_outpass_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCJx9tB4CH_s49UJPi3QBnPHnm2woakpt0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

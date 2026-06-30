@@ -1,0 +1,116 @@
+
+rules_version = '2';
+ 
+// Security rules for the ATSVS College app.
+// Role lives in users/{uid}.role. Families (parent/student) are tied to a rollNo.
+service cloud.firestore {
+  match /databases/{database}/documents {
+ 
+    // ---- helpers ----
+    function signedIn() { return request.auth != null; }
+ 
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function role() { return signedIn() ? userDoc().role : ''; }
+    function isAdmin() { return role() == 'admin'; }
+    function isStaff() {
+      return role() in ['hostelWarden', 'security', 'canteen', 'admin'];
+    }
+    function myRoll() { return userDoc().rollNo; }
+    function isFamilyOf(roll) {
+      return role() in ['parent', 'student'] && myRoll() == roll;
+    }
+ 
+    // Only the listed fields are being changed in an update.
+    function changedOnly(allowed) {
+      return request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(allowed);
+    }
+ 
+    // ---- users ----
+    // A user can read their own doc; admin manages all.
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
+      // Allow a first-time family user to create their own mapping during
+      // onboarding, but only as parent/student (never staff/admin).
+      allow create: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.role in ['parent', 'student'];
+    }
+ 
+    // ---- students ----
+    match /students/{rollNo} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // ---- phone index (public) ----
+    // Minimal phone -> {rollNo, kind} mapping the admin writes, so the app can
+    // verify a number is registered BEFORE the user signs in. Public read only;
+    // contains no sensitive data beyond roll number + role kind.
+    match /phoneIndex/{phone} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+ 
+    // ---- events ----
+    // Public read (college announcements) so the app can show them before the
+    // Flutter app's Firebase auth is wired. Tighten to signedIn() after that.
+    match /events/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+ 
+    // ---- mess menu ----
+    match /messMenu/{id} {
+      allow read: if signedIn();
+      allow write: if role() in ['canteen', 'admin'];
+    }
+ 
+    // ---- requests ----
+    match /requests/{id} {
+      // Read: any signed-in user. (Family queries are scoped client-side by
+      // studentRoll; Firestore can't prove a query against a get()-based rule,
+      // so per-owner read is enforced at query level, not in rules. Tighten
+      // later with custom claims / a Cloud Function if stricter privacy needed.)
+      allow read: if signedIn();
+ 
+      // A signed-in family member creates a request; it must start pending
+      // (no self-approval). Owner scoping is done by the app (studentRoll).
+      allow create: if signedIn()
+                    && request.resource.data.wardenStatus == 0
+                    && request.resource.data.authorityStatus == 0
+                    && request.resource.data.gateStatus == 0;
+ 
+      // Warden decides the warden stage.
+      allow update: if role() == 'hostelWarden'
+                    && changedOnly(['wardenStatus', 'wardenRemark', 'wardenDecidedAt']);
+ 
+      // Higher authority decides the authority stage (admin acts as authority here).
+      allow update: if isAdmin()
+                    && changedOnly(['authorityStatus', 'authorityRemark', 'authorityDecidedAt']);
+ 
+      // Security sets gate movement.
+      allow update: if role() == 'security'
+                    && changedOnly(['gateStatus', 'wentOutAt', 'returnedAt']);
+ 
+      allow delete: if isAdmin();
+    }
+ 
+    // ---- mess bookings ----
+    match /messBookings/{id} {
+      // Read: any signed-in user (queries scoped client-side, same limitation
+      // as requests). Writes remain restricted to the owning family.
+      allow read: if signedIn();
+      allow create, update: if isFamilyOf(request.resource.data.studentRoll);
+      allow delete: if isAdmin();
+    }
+ 
+    // ---- outpass blocks (late-return penalty) ----
+    match /outpassBlocks/{rollNo} {
+      allow read: if signedIn();
+      allow write: if role() in ['security', 'hostelWarden', 'admin'];
+    }
+  }
+}
