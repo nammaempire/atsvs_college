@@ -90,27 +90,57 @@ extension MealTypeInfo on MealType {
 /// customization choice for the matching meal.
 class MessMenuItem {
   final String id;
+  final int weekday; // 1 = Mon … 7 = Sun (repeats weekly)
   final MealType meal;
   final String name;
 
   const MessMenuItem({
     required this.id,
+    this.weekday = 1,
     required this.meal,
     required this.name,
   });
 
   Map<String, dynamic> toJson() => {
         'id': id,
+        'weekday': weekday,
         'meal': meal.index,
         'name': name,
       };
 
   factory MessMenuItem.fromJson(Map<String, dynamic> json) => MessMenuItem(
         id: json['id'],
+        weekday: json['weekday'] ?? 1,
         meal: MealType.values[json['meal'] ?? 0],
         name: json['name'] ?? '',
       );
 }
+
+/// An admin-managed side dish students can optionally add to a meal.
+class SideDish {
+  final String id;
+  final String name;
+
+  const SideDish({required this.id, required this.name});
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
+
+  factory SideDish.fromJson(Map<String, dynamic> json) =>
+      SideDish(id: json['id'], name: json['name'] ?? '');
+}
+
+/// Weekday helpers (1 = Mon … 7 = Sun).
+const List<String> kWeekdayNames = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday'
+];
+String weekdayName(int w) =>
+    (w >= 1 && w <= 7) ? kWeekdayNames[w - 1] : 'Day $w';
 
 /// A student's mess booking for one meal on one day.
 /// [available] false means "no food needed" for that meal.

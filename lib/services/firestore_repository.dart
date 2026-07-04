@@ -176,6 +176,18 @@ class FirestoreRepository {
   Future<void> removeMenuItem(String id) =>
       Collections.messMenu.doc(id).delete();
 
+  // ---------- Side dishes (admin list) ----------
+
+  Stream<List<SideDish>> watchSideDishes() => Collections.sideDishes
+      .snapshots()
+      .map((s) => s.docs.map((d) => SideDish.fromJson(d.data())).toList());
+
+  Future<void> addSideDish(SideDish d) =>
+      Collections.sideDishes.doc(d.id).set(d.toJson());
+
+  Future<void> removeSideDish(String id) =>
+      Collections.sideDishes.doc(id).delete();
+
   String mealDocId(String roll, String dateKey, MealType meal) =>
       '${roll}_${dateKey}_${meal.index}';
 

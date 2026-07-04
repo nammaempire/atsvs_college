@@ -17,6 +17,8 @@ class Collections {
       _db.collection('requests');
   static CollectionReference<Map<String, dynamic>> get messMenu =>
       _db.collection('messMenu');
+  static CollectionReference<Map<String, dynamic>> get sideDishes =>
+      _db.collection('sideDishes');
   static CollectionReference<Map<String, dynamic>> get messBookings =>
       _db.collection('messBookings');
   static CollectionReference<Map<String, dynamic>> get outpassBlocks =>

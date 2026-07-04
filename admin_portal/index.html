@@ -187,11 +187,23 @@
 
       <!-- MESS MENU -->
       <section id="menu" class="hidden">
-        <h1>Mess Menu</h1>
-        <p class="sub">Food items you add here appear as customization choices in the student app. If a student doesn't pick one, they get the regular mess.</p>
+        <h1>Weekly Mess Menu</h1>
+        <p class="sub">Set the main dishes for each weekday & meal. The menu repeats every week and shows to students for the matching day.</p>
         <div class="panel">
-          <h2>Add a food item</h2>
+          <h2>Add a dish</h2>
           <div class="row">
+            <div>
+              <label>Weekday</label>
+              <select id="f_wday">
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
+                <option value="7">Sunday</option>
+              </select>
+            </div>
             <div>
               <label>Meal</label>
               <select id="f_meal">
@@ -200,13 +212,22 @@
                 <option value="2">Dinner</option>
               </select>
             </div>
-            <div><label>Food name</label><input id="f_food" placeholder="e.g. Idli & Sambar"></div>
+            <div><label>Dish name</label><input id="f_food" placeholder="e.g. Idli & Sambar"></div>
           </div>
-          <button class="add-btn" style="margin-top:16px" onclick="addMenuItem()">+ Add Item</button>
+          <button class="add-btn" style="margin-top:16px" onclick="addMenuItem()">+ Add Dish</button>
         </div>
-        <div class="panel"><h2>Breakfast</h2><div id="menuBreakfast"></div></div>
-        <div class="panel"><h2>Lunch</h2><div id="menuLunch"></div></div>
-        <div class="panel"><h2>Dinner</h2><div id="menuDinner"></div></div>
+        <div class="panel">
+          <h2>Weekly menu</h2>
+          <div id="weeklyMenu"></div>
+        </div>
+        <div class="panel">
+          <h2>Side dishes <span style="font-weight:400;color:var(--muted);font-size:13px">— students can pick these to add</span></h2>
+          <div class="row">
+            <div><label>Side dish name</label><input id="f_side" placeholder="e.g. Curd, Papad, Pickle"></div>
+          </div>
+          <button class="add-btn" style="margin-top:16px" onclick="addSideDish()">+ Add Side Dish</button>
+          <div id="sideList" style="margin-top:16px"></div>
+        </div>
       </section>
 
       <!-- REQUESTS -->
@@ -246,7 +267,9 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-let students = [], events = [], menu = [], requests = [], staff = [];
+let students = [], events = [], menu = [], requests = [], staff = [], sideDishes = [];
+const WDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const MEALS = ['Breakfast','Lunch','Dinner'];
 let unsub = [];
 
 // ---- Auth ----
@@ -286,6 +309,7 @@ function startListeners(){
   unsub.push(db.collection('students').onSnapshot(s=>{ students = s.docs.map(d=>d.data()); renderStudents(); renderStats(); renderRequests(); }));
   unsub.push(db.collection('events').onSnapshot(s=>{ events = s.docs.map(d=>d.data()); renderEvents(); renderStats(); }));
   unsub.push(db.collection('messMenu').onSnapshot(s=>{ menu = s.docs.map(d=>d.data()); renderMenu(); }));
+  unsub.push(db.collection('sideDishes').onSnapshot(s=>{ sideDishes = s.docs.map(d=>d.data()); renderSideDishes(); }));
   unsub.push(db.collection('requests').onSnapshot(s=>{ requests = s.docs.map(d=>d.data()); renderRequests(); renderStats(); }));
   unsub.push(db.collection('users').onSnapshot(s=>{
     staff = s.docs.map(d=>({uid:d.id, ...d.data()}))
@@ -361,14 +385,33 @@ function renderEvents(){
      <td><button class="mini ghost" onclick="delEvent('${e.id}')">Delete</button></td></tr>`).join('')||emptyRow(5);
 }
 function renderMenu(){
-  [['menuBreakfast',0],['menuLunch',1],['menuDinner',2]].forEach(([el,meal])=>{
-    const items=menu.filter(m=>m.meal===meal);
-    document.getElementById(el).innerHTML = items.length
-      ? items.map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)">
-          <span>${m.name}</span><button class="mini ghost" onclick="delMenuItem('${m.id}')">Remove</button></div>`).join('')
-      : '<span style="color:#aaa">No items — students get the regular mess.</span>';
-  });
+  let html='';
+  for(let w=1; w<=7; w++){
+    html+=`<div style="margin-bottom:16px"><div style="font-weight:700;color:var(--primary);margin-bottom:6px">${WDAYS[w-1]}</div>`;
+    for(let meal=0; meal<3; meal++){
+      const items=menu.filter(m=>(m.weekday||1)===w && m.meal===meal);
+      html+=`<div style="margin:4px 0 4px 8px"><span style="font-size:12px;color:var(--muted)">${MEALS[meal]}:</span> `;
+      html+= items.length
+        ? items.map(m=>`<span style="display:inline-flex;align-items:center;gap:4px;background:#eef4ee;border-radius:14px;padding:3px 8px;margin:2px">${m.name}<span style="cursor:pointer;color:var(--no)" onclick="delMenuItem('${m.id}')">✕</span></span>`).join('')
+        : '<span style="color:#bbb">—</span>';
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+  document.getElementById('weeklyMenu').innerHTML=html;
 }
+function renderSideDishes(){
+  document.getElementById('sideList').innerHTML = sideDishes.length
+    ? sideDishes.map(d=>`<span style="display:inline-flex;align-items:center;gap:6px;background:#eef4ee;border-radius:16px;padding:5px 12px;margin:4px">${d.name}<span style="cursor:pointer;color:var(--no)" onclick="delSideDish('${d.id}')">✕</span></span>`).join('')
+    : '<span style="color:#bbb">No side dishes yet.</span>';
+}
+function addSideDish(){
+  const name=document.getElementById('f_side').value.trim();
+  if(!name){alert('Enter a side dish name.');return}
+  const ref=db.collection('sideDishes').doc();
+  ref.set({id:ref.id,name:name}).then(()=>document.getElementById('f_side').value='').catch(e=>alert(e.message));
+}
+function delSideDish(id){ db.collection('sideDishes').doc(id).delete().catch(e=>alert(e.message)); }
 
 // ---- Writes ----
 async function addStudent(){
@@ -425,11 +468,12 @@ async function addEvent(){
 function delEvent(id){ db.collection('events').doc(id).delete().catch(e=>alert(e.message)); }
 
 function addMenuItem(){
+  const weekday=parseInt(document.getElementById('f_wday').value,10);
   const meal=parseInt(document.getElementById('f_meal').value,10);
   const name=document.getElementById('f_food').value.trim();
-  if(!name){alert('Enter a food name.');return}
+  if(!name){alert('Enter a dish name.');return}
   const ref=db.collection('messMenu').doc();
-  ref.set({id:ref.id,meal:meal,name:name})
+  ref.set({id:ref.id,weekday:weekday,meal:meal,name:name})
     .then(()=>document.getElementById('f_food').value='')
     .catch(e=>alert(e.message));
 }

@@ -28,11 +28,13 @@ class _MessScreenState extends ConsumerState<MessScreen> {
     MealType.lunch: TextEditingController(),
     MealType.dinner: TextEditingController(),
   };
-  final Map<MealType, TextEditingController> _extra = {
-    MealType.breakfast: TextEditingController(),
-    MealType.lunch: TextEditingController(),
-    MealType.dinner: TextEditingController(),
+  // Side dishes the student ticked, per meal.
+  final Map<MealType, Set<String>> _sides = {
+    MealType.breakfast: <String>{},
+    MealType.lunch: <String>{},
+    MealType.dinner: <String>{},
   };
+  List<SideDish> _sideDishItems = const [];
 
   String get _roll => ref.read(appStateProvider).activeRoll!;
   List<MessMenuItem> _menuItems = const [];
@@ -49,11 +51,17 @@ class _MessScreenState extends ConsumerState<MessScreen> {
 
   @override
   void dispose() {
-    for (final c in [..._pref.values, ..._extra.values]) {
+    for (final c in _pref.values) {
       c.dispose();
     }
     super.dispose();
   }
+
+  Set<String> _parseSides(String? raw) => (raw ?? '')
+      .split(',')
+      .map((x) => x.trim())
+      .where((x) => x.isNotEmpty)
+      .toSet();
 
   String _key(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -65,7 +73,7 @@ class _MessScreenState extends ConsumerState<MessScreen> {
       final b = await repo.mealBookingFor(_roll, dateKey, m);
       _available[m] = b?.available ?? true;
       _pref[m]!.text = b?.preference ?? '';
-      _extra[m]!.text = b?.extra ?? '';
+      _sides[m] = _parseSides(b?.extra);
     }
     if (mounted) setState(() {});
   }
@@ -80,7 +88,7 @@ class _MessScreenState extends ConsumerState<MessScreen> {
           meal: m,
           available: _available[m] ?? true,
           preference: _pref[m]!.text.trim(),
-          extra: _extra[m]!.text.trim(),
+          extra: _sides[m]!.join(', '),
         ));
       }
     } catch (e) {
@@ -98,8 +106,9 @@ class _MessScreenState extends ConsumerState<MessScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Live admin-managed menu from Firestore.
+    // Live admin-managed menu + side dishes from Firestore.
     _menuItems = ref.watch(messMenuStreamProvider).valueOrNull ?? const [];
+    _sideDishItems = ref.watch(sideDishesStreamProvider).valueOrNull ?? const [];
     return Scaffold(
       appBar: AppBar(title: const Text('Mess Booking')),
       body: SafeArea(
@@ -227,16 +236,11 @@ class _MessScreenState extends ConsumerState<MessScreen> {
                       TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               _menuChips(m),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _extra[m],
-                decoration: const InputDecoration(
-                  labelText: 'Additional side dish (optional)',
-                  hintText: 'e.g. extra curd, papad, sweet…',
-                  prefixIcon: Icon(Icons.add_circle_outline),
-                  isDense: true,
-                ),
-              ),
+              const SizedBox(height: 14),
+              const Text('Add side dishes (optional)',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              _sideChips(m),
             ],
           ],
         ),
@@ -244,11 +248,39 @@ class _MessScreenState extends ConsumerState<MessScreen> {
     );
   }
 
+  Widget _sideChips(MealType m) {
+    if (_sideDishItems.isEmpty) {
+      return Text('No side dishes available.',
+          style: TextStyle(fontSize: 12.5, color: Colors.grey.shade500));
+    }
+    final selected = _sides[m]!;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: _sideDishItems.map((d) {
+        final sel = selected.contains(d.name);
+        return FilterChip(
+          label: Text(d.name),
+          selected: sel,
+          onSelected: (v) => setState(() {
+            if (v) {
+              selected.add(d.name);
+            } else {
+              selected.remove(d.name);
+            }
+          }),
+        );
+      }).toList(),
+    );
+  }
+
   Widget _menuChips(MealType m) {
-    final items = _menuItems.where((it) => it.meal == m).toList();
+    final items = _menuItems
+        .where((it) => it.meal == m && it.weekday == _selected.weekday)
+        .toList();
     final current = _pref[m]!.text;
     if (items.isEmpty) {
-      return Text('No dishes posted for this meal yet.',
+      return Text('No dish posted for this day yet.',
           style: TextStyle(fontSize: 12.5, color: Colors.grey.shade500));
     }
     return Wrap(

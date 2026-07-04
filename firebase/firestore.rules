@@ -65,7 +65,13 @@ service cloud.firestore {
     // ---- mess menu ----
     match /messMenu/{id} {
       allow read: if signedIn();
-      allow write: if role() in ['canteen', 'admin'];
+      allow write: if isAdmin();
+    }
+
+    // ---- side dishes (admin list) ----
+    match /sideDishes/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
     }
  
     // ---- requests ----

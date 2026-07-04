@@ -40,6 +40,10 @@ final messMenuStreamProvider = StreamProvider<List<MessMenuItem>>(
 final messBookingsStreamProvider = StreamProvider<List<MealBooking>>(
     (ref) => ref.watch(repositoryProvider).watchMessBookings());
 
+/// Admin-managed side-dish list.
+final sideDishesStreamProvider = StreamProvider<List<SideDish>>(
+    (ref) => ref.watch(repositoryProvider).watchSideDishes());
+
 /// Requests for a specific student (the family view).
 final requestsForRollProvider =
     StreamProvider.family<List<AppRequest>, String>(
